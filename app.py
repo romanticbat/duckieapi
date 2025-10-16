@@ -181,16 +181,13 @@ def _apply_effects(draw, battle_image):
 
     paste_if_exists(request.args.get("effect1"), (168, 132), 12, "effects")
     paste_if_exists(request.args.get("effect2"), (106, 22), 12, "effects")
-    paste_if_exists(request.args.get("effect3"), (65, 25), 14, "effects")
-    paste_if_exists(request.args.get("effect4"), (208, 116), 11, "effects")
-    paste_if_exists(request.args.get("effect5"), (65, 24), 11, "effects")
-    paste_if_exists(request.args.get("weather1"), (5, 5), 16, "weather")
-    paste_if_exists(request.args.get("weather2"), (230, 5), 16, "weather")
+    paste_if_exists(request.args.get("gender1"), (208, 116), 11, "icons")
+    paste_if_exists(request.args.get("gender2"), (65, 24), 11, "icons")
 
     positions_p2 = [(2, 50)]
     positions_p1 = [(240, 152)]
-    paste_if_exists(request.args.get("ball1"), positions_p1[0], 15, "effects")
-    paste_if_exists(request.args.get("ball2"), positions_p2[0], 15, "effects")
+    paste_if_exists(request.args.get("ball1"), positions_p1[0], 15, "icons")
+    paste_if_exists(request.args.get("ball2"), positions_p2[0], 15, "icons")
 
 
 def _draw_texts(draw, battle_image, pokemon1, pokemon2, font_scale):
