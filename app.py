@@ -1,12 +1,17 @@
-from flask import Flask, send_file, request
+from flask import Flask, send_file, request, make_response
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
 from io import BytesIO
 import os
 import requests
 import threading
 import time
+import uuid
 
 app = Flask(__name__)
+
+# ================================================================
+# FUNÇÕES DE SUPORTE
+# ================================================================
 
 def get_ema_image():
     local_path = os.path.join("images", "hud_battle.png")
@@ -79,28 +84,20 @@ def get_real_pokemon_name(pokemon_identifier):
     return name.capitalize()
 
 
-# ================================================================
-# SPRITES
-# ================================================================
-
 def get_pokemon_sprite(pokemon_name, is_pokemon1=False, shiny=False, target_height=96):
     if str(pokemon_name).isdigit():
         pokemon_id = int(pokemon_name)
-
         if pokemon_id >= 10000:
             side = "back" if is_pokemon1 else "front"
             shiny_tag = "s" if shiny else "n"
             filename = f"{pokemon_id}-{side}-{shiny_tag}.gif"
             local_path = os.path.join("msprites", filename)
-
             if os.path.exists(local_path):
                 try:
                     sprite = Image.open(local_path)
                     return sprite
                 except Exception as e:
                     print(f"Erro ao carregar sprite local ({filename}): {e}")
-            else:
-                print(f"[AVISO] Sprite local não encontrado: {local_path}")
 
     url = f"https://pokeapi.co/api/v2/pokemon/{pokemon_name.lower()}"
     response = requests.get(url)
@@ -127,10 +124,6 @@ def get_pokemon_sprite(pokemon_name, is_pokemon1=False, shiny=False, target_heig
         return resize_image(sprite, target_height=target_height)
     return None
 
-
-# ================================================================
-# HP BAR
-# ================================================================
 
 def get_hp_image(color):
     local_path = os.path.join("images", "bars", f"overlay_{color}.jpg")
@@ -161,10 +154,6 @@ def draw_hp_bar(battle_image, position, hp_ratio, bar_width=92, bar_height=4):
     cropped = hp_resized.crop((0, 0, fill_width, bar_height))
     battle_image.paste(cropped, position, cropped)
 
-
-# ================================================================
-# EFEITOS E TEXTOS
-# ================================================================
 
 def _apply_effects(draw, battle_image):
     def paste_if_exists(filename, position, size, folder):
@@ -217,7 +206,7 @@ def _draw_texts(draw, battle_image, pokemon1, pokemon2, font_scale):
 
 
 # ================================================================
-# CRIAÇÃO DA IMAGEM / GIF
+# GERAÇÃO DE IMAGEM/GIF
 # ================================================================
 
 def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, font_scale=5.0):
@@ -238,24 +227,15 @@ def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, 
     hp1_ratio = max(0, min(1, hp1 / 100))
     hp2_ratio = max(0, min(1, hp2 / 100))
 
-    # ======= Suporte completo a GIF de fundo =======
     if getattr(background, "is_animated", False):
-        background_frames = []
-        for frame in ImageSequence.Iterator(background):
-            frame_rgba = frame.convert("RGBA").copy()
-            background_frames.append(frame_rgba)
+        background_frames = [f.convert("RGBA").copy() for f in ImageSequence.Iterator(background)]
     else:
         background_frames = [background.convert("RGBA")]
 
     if getattr(sprite1, "is_animated", False) or getattr(sprite2, "is_animated", False) or getattr(background, "is_animated", False):
         frames = []
         durations = []
-
-        max_frames = max(
-            len(background_frames),
-            getattr(sprite1, "n_frames", 1),
-            getattr(sprite2, "n_frames", 1)
-        )
+        max_frames = max(len(background_frames), getattr(sprite1, "n_frames", 1), getattr(sprite2, "n_frames", 1))
 
         for i in range(max_frames):
             bg_frame = background_frames[i % len(background_frames)].copy()
@@ -273,15 +253,12 @@ def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, 
             else:
                 frame2 = sprite2
 
-            # sprites primeiro
             battle_frame.paste(frame1, (20, 75), frame1)
             battle_frame.paste(frame2, (140, 10), frame2)
 
-            # barras antes da HUD ✅
             draw_hp_bar(battle_frame, (70, 39), hp2_ratio)
             draw_hp_bar(battle_frame, (206, 130), hp1_ratio)
 
-            # HUD por cima ✅
             if ema_image:
                 battle_frame.paste(ema_image, (0, 0), ema_image)
 
@@ -297,16 +274,13 @@ def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, 
         output.seek(0)
         return output, "gif"
 
-    # ======= Imagem estática =======
+    # imagem estática
     battle_image = background.convert("RGBA").copy()
     battle_image.paste(sprite1, (20, 75), sprite1)
     battle_image.paste(sprite2, (140, 10), sprite2)
-
-    # barras antes da HUD ✅
     draw_hp_bar(battle_image, (70, 39), hp2_ratio)
     draw_hp_bar(battle_image, (206, 130), hp1_ratio)
 
-    # HUD por cima ✅
     if ema_image:
         battle_image.paste(ema_image, (0, 0), ema_image)
 
@@ -343,12 +317,38 @@ def battle():
     return send_file(battle_image, mimetype=mimetype)
 
 
+# ✅ NOVA ROTA /battle.gif — COMPATÍVEL COM EMBED DO DISCORD
+@app.route("/battle.gif", methods=["GET"])
+def battle_gif():
+    pokemon1 = request.args.get("pokemon1")
+    pokemon2 = request.args.get("pokemon2")
+    if not pokemon1 or not pokemon2:
+        return "Please provide both pokemon1 and pokemon2 parameters.", 400
+
+    sprite_height = int(request.args.get("sprite_height", 55))
+    hp_bar_scale = float(request.args.get("hp_bar_scale", 1.5))
+    font_scale = float(request.args.get("font_scale", 6.0))
+
+    battle_image, img_type = create_battle_image(pokemon1, pokemon2, sprite_height, hp_bar_scale, font_scale)
+    if battle_image is None:
+        return "Failed to retrieve one or both Pokémon sprites.", 400
+
+    if img_type == "gif":
+        response = make_response(battle_image.getvalue())
+        response.headers["Content-Type"] = "image/gif"
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        response.headers["Content-Disposition"] = "inline; filename=battle.gif"
+        return response
+    else:
+        return send_file(battle_image, mimetype="image/png")
+
+
 # ================================================================
 # AUTO PING
 # ================================================================
 
 def auto_ping():
-    url = "https://apiduckie.onrender.com/battle?pokemon1=4&pokemon2=1&hp1=80&hp2=65&level1=100&level2=100&shiny1=true&shiny2=true"
+    url = "https://duckieapi.onrender.com/battle?pokemon1=4&pokemon2=1&hp1=80&hp2=65&level1=100&level2=100&shiny1=true&shiny2=true"
     while True:
         try:
             response = requests.get(url)
@@ -358,10 +358,6 @@ def auto_ping():
             print(f"Erro ao enviar ping: {e}")
         time.sleep(300)
 
-
-# ================================================================
-# MAIN
-# ================================================================
 
 if __name__ == "__main__":
     threading.Thread(target=auto_ping, daemon=True).start()
