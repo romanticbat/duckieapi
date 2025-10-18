@@ -5,7 +5,6 @@ import os
 import requests
 import threading
 import time
-import uuid
 
 app = Flask(__name__)
 
@@ -317,7 +316,7 @@ def battle():
     return send_file(battle_image, mimetype=mimetype)
 
 
-# ✅ NOVA ROTA /battle.gif — COMPATÍVEL COM EMBED DO DISCORD
+# ✅ ROTA COMPATÍVEL COM DISCORD
 @app.route("/battle.gif", methods=["GET"])
 def battle_gif():
     pokemon1 = request.args.get("pokemon1")
@@ -333,14 +332,20 @@ def battle_gif():
     if battle_image is None:
         return "Failed to retrieve one or both Pokémon sprites.", 400
 
+    response = make_response(battle_image.getvalue())
     if img_type == "gif":
-        response = make_response(battle_image.getvalue())
         response.headers["Content-Type"] = "image/gif"
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        response.headers["Content-Disposition"] = "inline; filename=battle.gif"
-        return response
+        filename = "battle.gif"
     else:
-        return send_file(battle_image, mimetype="image/png")
+        response.headers["Content-Type"] = "image/png"
+        filename = "battle.png"
+
+    response.headers["Content-Disposition"] = f"inline; filename={filename}"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
 
 
 # ================================================================
@@ -348,7 +353,7 @@ def battle_gif():
 # ================================================================
 
 def auto_ping():
-    url = "https://duckieapi.onrender.com/battle?pokemon1=4&pokemon2=1&hp1=80&hp2=65&level1=100&level2=100&shiny1=true&shiny2=true"
+    url = "https://duckieapi.onrender.com/battle.gif?pokemon1=4&pokemon2=1&hp1=80&hp2=65&level1=100&level2=100&shiny1=true&shiny2=true"
     while True:
         try:
             response = requests.get(url)
