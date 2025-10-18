@@ -142,16 +142,40 @@ def choose_hp_color(hp_ratio):
         return "red"
 
 
-def draw_hp_bar(battle_image, position, hp_ratio, bar_width=92, bar_height=4):
+# ================================================================
+# NOVA FUNÇÃO DE BARRA DE HP (corrigida)
+# ================================================================
+def draw_hp_bar(battle_image, pokemon_slot, hp_ratio):
+    """
+    Desenha a barra de HP dentro dos limites reais da HUD.
+    pokemon_slot: 'p1' (player) ou 'p2' (oponente)
+    hp_ratio: valor entre 0.0 e 1.0
+    """
     color = choose_hp_color(hp_ratio)
     hp_img = get_hp_image(color)
     if not hp_img:
         return
+
     hp_ratio = max(0, min(1, hp_ratio))
-    fill_width = int(bar_width * hp_ratio)
-    hp_resized = hp_img.resize((bar_width, bar_height), Image.BICUBIC)
+
+    # Limites fixos da HUD (baseados nas barras vermelhas da imagem de referência)
+    if pokemon_slot == "p2":
+        # BARRA DO INIMIGO (TOP LEFT)
+        x, y = 62, 39      # ponto inicial
+        max_width = 50     # largura máxima da barra
+    else:
+        # BARRA DO PLAYER (BOTTOM RIGHT)
+        x, y = 197, 130    # ponto inicial
+        max_width = 50     # largura máxima da barra
+
+    bar_height = 4
+    fill_width = int(max_width * hp_ratio)
+
+    # Redimensiona e corta
+    hp_resized = hp_img.resize((max_width, bar_height), Image.BICUBIC)
     cropped = hp_resized.crop((0, 0, fill_width, bar_height))
-    battle_image.paste(cropped, position, cropped)
+
+    battle_image.paste(cropped, (x, y), cropped)
 
 
 def _apply_effects(draw, battle_image):
@@ -255,8 +279,8 @@ def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, 
             battle_frame.paste(frame1, (20, 75), frame1)
             battle_frame.paste(frame2, (140, 10), frame2)
 
-            draw_hp_bar(battle_frame, (70, 39), hp2_ratio)
-            draw_hp_bar(battle_frame, (206, 130), hp1_ratio)
+            draw_hp_bar(battle_frame, "p2", hp2_ratio)
+            draw_hp_bar(battle_frame, "p1", hp1_ratio)
 
             if ema_image:
                 battle_frame.paste(ema_image, (0, 0), ema_image)
@@ -277,8 +301,8 @@ def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, 
     battle_image = background.convert("RGBA").copy()
     battle_image.paste(sprite1, (20, 75), sprite1)
     battle_image.paste(sprite2, (140, 10), sprite2)
-    draw_hp_bar(battle_image, (70, 39), hp2_ratio)
-    draw_hp_bar(battle_image, (206, 130), hp1_ratio)
+    draw_hp_bar(battle_image, "p2", hp2_ratio)
+    draw_hp_bar(battle_image, "p1", hp1_ratio)
 
     if ema_image:
         battle_image.paste(ema_image, (0, 0), ema_image)
@@ -316,7 +340,6 @@ def battle():
     return send_file(battle_image, mimetype=mimetype)
 
 
-# ✅ ROTA COMPATÍVEL COM DISCORD
 @app.route("/battle.gif", methods=["GET"])
 def battle_gif():
     pokemon1 = request.args.get("pokemon1")
