@@ -384,6 +384,9 @@ def auto_ping():
             print(f"Erro ao enviar ping: {e}")
         time.sleep(300)
 
+@app.route("/")
+def home():
+    return "Duckie API is running 🦆"
 
 if __name__ == "__main__":
     threading.Thread(target=auto_ping, daemon=True).start()
