@@ -288,7 +288,7 @@ def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, 
             _draw_texts(draw, battle_frame, pokemon1, pokemon2, font_scale)
 
             frames.append(battle_frame)
-            durations.append(80)
+            durations.append(145)
 
         output = BytesIO()
         frames[0].save(output, format="GIF", save_all=True, append_images=frames[1:], loop=0, duration=durations, disposal=2)
