@@ -368,6 +368,23 @@ def battle_gif():
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
 
+@app.route("/wtp", methods=["GET"])
+def wtp():
+    image_id = request.args.get("id")
+    if not image_id:
+        return "Parâmetro 'id' é obrigatório.", 400
+
+    # Caminho do arquivo
+    image_path = os.path.join("wtp", f"{image_id}.png")
+
+    # Verifica se o arquivo existe
+    if not os.path.exists(image_path):
+        return f"Arquivo {image_id}.png não encontrado na pasta 'wtp'.", 404
+
+    # Envia a imagem
+    return send_file(image_path, mimetype="image/png")
+
+
 
 # ================================================================
 # AUTO PING
