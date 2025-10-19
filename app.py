@@ -158,9 +158,7 @@ def draw_hp_bar(battle_image, pokemon_slot, hp_ratio):
 
     hp_ratio = max(0, min(1, hp_ratio))
 
-    # Limites fixos da HUD (baseados nas barras vermelhas da imagem de referência)
     if pokemon_slot == "p2":
-        # BARRA DO INIMIGO (TOP LEFT)
         x, y = 62, 39      # ponto inicial
         max_width = 50     # largura máxima da barra
     else:
