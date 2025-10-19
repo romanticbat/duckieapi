@@ -143,14 +143,9 @@ def choose_hp_color(hp_ratio):
 
 
 # ================================================================
-# NOVA FUNÇÃO DE BARRA DE HP (corrigida)
+# BARRA DE HP
 # ================================================================
 def draw_hp_bar(battle_image, pokemon_slot, hp_ratio):
-    """
-    Desenha a barra de HP dentro dos limites reais da HUD.
-    pokemon_slot: 'p1' (player) ou 'p2' (oponente)
-    hp_ratio: valor entre 0.0 e 1.0
-    """
     color = choose_hp_color(hp_ratio)
     hp_img = get_hp_image(color)
     if not hp_img:
@@ -159,20 +154,17 @@ def draw_hp_bar(battle_image, pokemon_slot, hp_ratio):
     hp_ratio = max(0, min(1, hp_ratio))
 
     if pokemon_slot == "p2":
-        x, y = 62, 39      # ponto inicial
-        max_width = 50     # largura máxima da barra
+        x, y = 62, 39
+        max_width = 50
     else:
-        # BARRA DO PLAYER (BOTTOM RIGHT)
-        x, y = 197, 130    # ponto inicial
-        max_width = 50     # largura máxima da barra
+        x, y = 197, 130
+        max_width = 50
 
     bar_height = 4
     fill_width = int(max_width * hp_ratio)
 
-    # Redimensiona e corta
     hp_resized = hp_img.resize((max_width, bar_height), Image.BICUBIC)
     cropped = hp_resized.crop((0, 0, fill_width, bar_height))
-
     battle_image.paste(cropped, (x, y), cropped)
 
 
@@ -194,10 +186,8 @@ def _apply_effects(draw, battle_image):
     paste_if_exists(request.args.get("gender1"), (208, 116), 11, "icons")
     paste_if_exists(request.args.get("gender2"), (65, 24), 11, "icons")
 
-    positions_p2 = [(2, 50)]
-    positions_p1 = [(240, 152)]
-    paste_if_exists(request.args.get("ball1"), positions_p1[0], 15, "icons")
-    paste_if_exists(request.args.get("ball2"), positions_p2[0], 15, "icons")
+    paste_if_exists(request.args.get("ball1"), (240, 152), 15, "icons")
+    paste_if_exists(request.args.get("ball2"), (2, 50), 15, "icons")
 
 
 def _draw_texts(draw, battle_image, pokemon1, pokemon2, font_scale):
@@ -229,7 +219,6 @@ def _draw_texts(draw, battle_image, pokemon1, pokemon2, font_scale):
 # ================================================================
 # GERAÇÃO DE IMAGEM/GIF
 # ================================================================
-
 def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, font_scale=5.0):
     shiny1 = request.args.get("shiny1", "false").lower() == "true"
     shiny2 = request.args.get("shiny2", "false").lower() == "true"
@@ -295,7 +284,6 @@ def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, 
         output.seek(0)
         return output, "gif"
 
-    # imagem estática
     battle_image = background.convert("RGBA").copy()
     battle_image.paste(sprite1, (20, 75), sprite1)
     battle_image.paste(sprite2, (140, 10), sprite2)
@@ -368,43 +356,46 @@ def battle_gif():
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
 
+
 @app.route("/wtp", methods=["GET"])
 def wtp():
     image_id = request.args.get("id")
     if not image_id:
         return "Parâmetro 'id' é obrigatório.", 400
 
-    # Caminho do arquivo
     image_path = os.path.join("wtp", f"{image_id}.png")
-
-    # Verifica se o arquivo existe
     if not os.path.exists(image_path):
         return f"Arquivo {image_id}.png não encontrado na pasta 'wtp'.", 404
 
-    # Envia a imagem
     return send_file(image_path, mimetype="image/png")
 
 
-
 # ================================================================
-# AUTO PING
+# AUTO PING SEGURO (executa só de vez em quando)
 # ================================================================
+last_ping = 0
 
 def auto_ping():
-    url = "https://duckieapi.onrender.com/battle.gif?pokemon1=4&pokemon2=1&hp1=80&hp2=65&level1=100&level2=100&shiny1=true&shiny2=true"
-    while True:
+    global last_ping
+    now = time.time()
+    if now - last_ping > 300:  # apenas 1 ping a cada 5 minutos
         try:
-            response = requests.get(url)
-            now = time.strftime("%d/%m/%Y %H:%M:%S")
-            print(f"[{now}] Ping enviado! Status code: {response.status_code}")
+            response = requests.get("https://duckieapi.onrender.com/")
+            print(f"[AUTO-PING] Status: {response.status_code}")
         except Exception as e:
-            print(f"Erro ao enviar ping: {e}")
-        time.sleep(300)
+            print(f"[AUTO-PING ERRO] {e}")
+        last_ping = now
+
+
+@app.before_request
+def before_any_request():
+    threading.Thread(target=auto_ping, daemon=True).start()
+
 
 @app.route("/")
 def home():
     return "Duckie API is running 🦆"
 
+
 if __name__ == "__main__":
-    threading.Thread(target=auto_ping, daemon=True).start()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000)
