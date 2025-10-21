@@ -183,8 +183,8 @@ def _apply_effects(draw, battle_image):
 
     paste_if_exists(request.args.get("effect1"), (168, 132), 12, "effects")
     paste_if_exists(request.args.get("effect2"), (106, 22), 12, "effects")
-    paste_if_exists(request.args.get("gender1"), (208, 116), 11, "icons")
-    paste_if_exists(request.args.get("gender2"), (65, 24), 11, "icons")
+    paste_if_exists(request.args.get("gender1"), (211, 116), 9, "icons")
+    paste_if_exists(request.args.get("gender2"), (69, 24), 9, "icons")
 
     paste_if_exists(request.args.get("ball1"), (240, 152), 15, "icons")
     paste_if_exists(request.args.get("ball2"), (2, 50), 15, "icons")
