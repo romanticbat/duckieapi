@@ -1,6 +1,7 @@
 from flask import Flask, send_file, request, make_response
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
 from io import BytesIO
+from waitress import serve
 import os
 import requests
 import threading
@@ -398,5 +399,4 @@ def home():
 
 
 if __name__ == "__main__":
-    # Só roda localmente, não no Render
-    app.run(debug=True)
+    serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
