@@ -218,7 +218,7 @@ def _draw_texts(draw, battle_image, pokemon1, pokemon2, font_scale):
 
 
 # ================================================================
-# GERAÇÃO DE IMAGEM/GIF
+# GERAÇÃO DE IMAGEM/GIFf
 # ================================================================
 def create_battle_image(pokemon1, pokemon2, sprite_height=96, hp_bar_scale=1.0, font_scale=5.0):
     shiny1 = request.args.get("shiny1", "false").lower() == "true"
